@@ -20,29 +20,55 @@ mongoose.connection.once("open", () => {
   console.log('connected to database')
 })
 
+// schema and model
+const UserSchema = new mongoose.Schema({
+  username: {
+    type: String,
+    required: true
+  },
+  password: {
+    type: String,
+    required: true
+  }
+})
+
+const User = mongoose.model('User',UserSchema)
 
 // middleware
 app.engine("hbs", hbs({extname: '.hbs'}))
 app.set("view engine", 'hbs')
 app.use(express.static(__dirname + "/public"))
-app.use(session({
-  secret: "verysolidsecret",
-  resave: false,
-  saveUninitialized: true
-
-}))
 // for parsing
 app.use(express.urlencoded({extended: false}))
 // for testing
 app.use(express.json())
 
 
-//====== passport.js==========
-// app.use(passport.initialize())
-// // to keep the session running
-// app.use(passport.session())
 
-// app.serializeUSer
+// creates a session
+app.use(session({
+  secret: "verysolidsecret",
+  resave: false,
+  saveUninitialized: true
+
+}))
+
+
+//====== passport.js==========
+app.use(passport.initialize())
+// to keep the session running
+app.use(passport.session())
+
+// store user data in session
+passport.serializeUser(function (user, done) {
+  done(null, user.id)
+})
+
+passport.deserializeUser(function (id, done) {
+   User.findById(id, function (err, user) {
+     done (err, user)
+   })
+})
 
 
 
