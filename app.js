@@ -50,20 +50,18 @@ app.use(session({
   secret: "verysolidsecret",
   resave: false,
   saveUninitialized: true
-
 }))
-
 
 //====== passport.js==========
 app.use(passport.initialize())
 // to keep the session running
 app.use(passport.session())
 
-// store user data in session
+// persist user data into session
 passport.serializeUser(function (user, done) {
   done(null, user.id)
 })
-
+// retrieve user data stored in session
 passport.deserializeUser(function (id, done) {
    User.findById(id, function (err, user) {
      done (err, user)
@@ -86,6 +84,14 @@ passport.use(new localStrategy(function (username, password, done) {
 }))
 
 
+// setup Routes
+app.get("/",(req,res) => {
+  res.render("index", {title:"Home"})
+})
+
+app.get("/login", (req,res) =>{
+  res.render("login", {title: "Login"})
+})
 
 
 
