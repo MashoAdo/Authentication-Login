@@ -1,24 +1,51 @@
 const express = require("express")
-const session = require("express-session")
 const hbs = require("express-handlebars")
 const mongoose = require("mongoose")
+const session = require("express-session")
 const passport = require("passport")
-const localStrategy = require("passport-local").Strategy
-const bcrypt = require("bcrypt")
+const passportLocalMongoose = require("passport-local-mongoose")
 require("dotenv").config()
 
 const app = express()
 const PORT = process.env.PORT || "8000"
 
 
-// conncet to cloud mongo db
-mongoose.connect(`mongodb+srv://masho:${process.env.MONGODB_PASS}@xtechguy.jstjm.mongodb.net/xtechguy?retryWrites=true&w=majority`, {
+// middleware
+app.engine("hbs", hbs({extname: '.hbs'}))
+app.set("view engine", 'hbs')
+app.use(express.static(__dirname + "/public"))
+// for parsing
+app.use(express.urlencoded({extended: false}))
+// for testing
+app.use(express.json())
+
+
+// creates a session
+app.use(session({
+  secret: "verysolidsecret",
+  resave: false,
+  saveUninitialized: false
+}))  
+
+//initialize passport
+app.use(passport.initialize())
+//set session with passport
+app.use(passport.session())
+
+
+// conncet to local MongoDB
+const url = 'mongodb://127.0.0.1:27017/authentication'
+mongoose.connect(url, {
   useNewUrlParser: true,
   useUnifiedTopology: true
 })
+
+// log error or success message
 mongoose.connection.once("open", () => {
-  console.log('connected to database')
+  console.log('connected to database',url)
 })
+mongoose.connection.on("error", err => console.log("connection", err))
+
 
 // schema and model
 const UserSchema = new mongoose.Schema({
@@ -32,56 +59,17 @@ const UserSchema = new mongoose.Schema({
   }
 })
 
+// mongoose passport plugin to salt,hash and store the user into MongoDB
+UserSchema.plugin(passportLocalMongoose)
+
+// create mongoose model
 const User = mongoose.model('User',UserSchema)
 
-// middleware
-app.engine("hbs", hbs({extname: '.hbs'}))
-app.set("view engine", 'hbs')
-app.use(express.static(__dirname + "/public"))
-// for parsing
-app.use(express.urlencoded({extended: false}))
-// for testing
-app.use(express.json())
-
-
-
-// creates a session
-app.use(session({
-  secret: "verysolidsecret",
-  resave: false,
-  saveUninitialized: true
-}))
-
-//====== passport.js==========
-app.use(passport.initialize())
-// to keep the session running
-app.use(passport.session())
-
-// persist user data into session
-passport.serializeUser(function (user, done) {
-  done(null, user.id)
-})
+// stores user data into session
+passport.serializeUser(User.serializeUser())
 // retrieve user data stored in session
-passport.deserializeUser(function (id, done) {
-   User.findById(id, function (err, user) {
-     done (err, user)
-   })
-})
+passport.deserializeUser(User.deserializeUser())
 
-// set strategy and authenticate users using username and password
-passport.use(new localStrategy(function (username, password, done) {
-  User.findOne({username: username}, function (err, user) {
-    if (err) return done(err)
-    if (!user) return done(null, false, {message: "Incorrect username."})
-
-    bcrypt.compare(password, user.password, function(err ,res) {
-      if (err) return done(err)
-      if (res === false) return done(null, false, {message:'incorrect password.'})
-
-      return done(null, user)
-    })
-  })
-}))
 
 
 // setup Routes
@@ -92,7 +80,23 @@ app.get("/",(req,res) => {
 app.get("/login", (req,res) =>{
   res.render("login", {title: "Login"})
 })
+app.get("/index", (req,res) =>{
+  res.render("index", {title: "Index"})
+})
 
+app.get("/register", (req,res) =>{
+  res.render("register", {title: "Register"})
+})
+
+// register user
+app.post("/register", (req,res) =>{
+
+})
+
+// login a user
+app.post("/login", (req,res) =>{
+
+})
 
 
 app.listen(PORT, () => {
